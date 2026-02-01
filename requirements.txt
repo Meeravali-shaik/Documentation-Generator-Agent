@@ -1,8 +1,9 @@
 openai
 google-genai
-
 requests
 pyyaml
 networkx
 matplotlib
 tqdm
+flask
+reportlab

@@ -6,7 +6,7 @@ from dependency_graph import create_graph
 from github_loader import clone_repo
 import os
 
-# ------------------ INPUT ------------------
+
 
 choice = input("Enter 1 for local folder, 2 for GitHub repo: ")
 
@@ -16,10 +16,10 @@ else:
     repo_url = input("Enter GitHub repo URL: ")
     REPO_PATH = clone_repo(repo_url)
 
-# ------------------ PROCESS ------------------
+
 
 files = read_repo(REPO_PATH)
-dependencies = {}   # ✅ IMPORTANT
+dependencies = {}   
 
 for path, code in files.items():
     print(f"Processing: {path}")
@@ -30,7 +30,7 @@ for path, code in files.items():
     except:
         dependencies[path] = []
 
-    # limit very large files
+  
     doc, meta = generate_doc(code[:12000])
 
     name = os.path.basename(path).replace(".py", "")
@@ -39,8 +39,8 @@ for path, code in files.items():
     with open("docs/compression_report.txt", "a", encoding="utf-8") as f:
         f.write(f"{name}\n{str(meta)}\n\n")
 
-# ------------------ GRAPH ------------------
+
 
 create_graph(dependencies)
 
-print("✅ Documentation Generated in /docs")
+print(" Documentation Generated in /docs")

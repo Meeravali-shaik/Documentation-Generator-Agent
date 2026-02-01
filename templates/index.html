@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Documentation Generator Agent</title>
+</head>
+<body style="font-family: Arial; text-align:center; margin-top:50px;">
+
+<header style="background:#2c3e50;color:white;padding:20px;">
+    📚 Documentation Generator Agent
+</header>
+
+<br>
+
+<input type="text" id="input_value"
+       placeholder="Enter folder path OR GitHub repo URL"
+       style="width:500px; padding:10px;">
+
+<br><br>
+
+<button onclick="startProcess()" style="padding:10px 20px;">
+    Generate Documentation
+</button>
+
+<button id="downloadBtn" onclick="downloadPDF()" 
+        style="padding:10px 20px; display:none; margin-left:10px;">
+    Download PDF
+</button>
+
+<pre id="log"
+     style="margin:30px auto; width:70%; height:300px;
+            background:#f4f4f4; padding:15px; overflow:auto;">
+</pre>
+
+<footer style="background:#2c3e50;color:white;padding:15px;margin-top:40px;">
+    Developed by Meeravali Shaik
+</footer>
+
+<script>
+function startProcess() {
+    let input = document.getElementById("input_value").value;
+    let log = document.getElementById("log");
+    let btn = document.getElementById("downloadBtn");
+
+    log.innerHTML = "";
+    btn.style.display = "none";
+
+    const evtSource = new EventSource(`/progress?input_value=${encodeURIComponent(input)}`);
+
+    evtSource.onmessage = function(event) {
+        log.innerHTML += event.data + "\n";
+        log.scrollTop = log.scrollHeight;
+
+        if (event.data.includes("Done")) {
+            btn.style.display = "inline-block";
+            evtSource.close();
+        }
+    };
+}
+
+function downloadPDF() {
+    window.location.href = "/download";
+}
+</script>
+
+</body>
+</html>
