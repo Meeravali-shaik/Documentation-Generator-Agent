@@ -35,30 +35,30 @@ def generate_pdf(text, output_path):
 def process_project(input_value):
     global LAST_PDF_PATH
 
-    yield "🚀 Starting documentation process...\n"
+    yield "Starting documentation process...\n"
 
     
     if input_value.startswith("http"):
-        yield "🔄 Cloning / Updating GitHub repository...\n"
+        yield "Cloning / Updating GitHub repository...\n"
         folder_path = clone_repo(input_value)
     else:
         folder_path = input_value
 
-    yield "📂 Reading project files...\n"
+    yield "Reading project files...\n"
     files = read_repo(folder_path)
 
     combined_code = ""
 
     for path, code in files.items():
         name = os.path.basename(path)
-        yield f"➕ Adding file to context: {name}\n"
+        yield f"Adding file to context: {name}\n"
         combined_code += f"\n\n### FILE: {name}\n{code[:6000]}\n"
 
-    yield "🤖 Sending whole project to Gemini (single request)...\n"
+    yield "Sending whole project to Gemini (single request)...\n"
 
     doc_text, _ = generate_doc(combined_code)
 
-    yield "📝 Generating PDF...\n"
+    yield "Generating PDF...\n"
 
     os.makedirs("output", exist_ok=True)
     pdf_path = os.path.join("output", "Project_Documentation.pdf")
@@ -66,7 +66,7 @@ def process_project(input_value):
 
     LAST_PDF_PATH = pdf_path
 
-    yield "✅ Done! Click Download PDF button.\n"
+    yield "Done! Click Download PDF button.\n"
 
 
 

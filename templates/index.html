@@ -1,66 +1,338 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Documentation Generator Agent</title>
-</head>
-<body style="font-family: Arial; text-align:center; margin-top:50px;">
-
-<header style="background:#2c3e50;color:white;padding:20px;">
-    📚 Documentation Generator Agent
-</header>
-
-<br>
-
-<input type="text" id="input_value"
-       placeholder="Enter folder path OR GitHub repo URL"
-       style="width:500px; padding:10px;">
-
-<br><br>
-
-<button onclick="startProcess()" style="padding:10px 20px;">
-    Generate Documentation
-</button>
-
-<button id="downloadBtn" onclick="downloadPDF()" 
-        style="padding:10px 20px; display:none; margin-left:10px;">
-    Download PDF
-</button>
-
-<pre id="log"
-     style="margin:30px auto; width:70%; height:300px;
-            background:#f4f4f4; padding:15px; overflow:auto;">
-</pre>
-
-<footer style="background:#2c3e50;color:white;padding:15px;margin-top:40px;">
-    Developed by Meeravali Shaik
-</footer>
-
-<script>
-function startProcess() {
-    let input = document.getElementById("input_value").value;
-    let log = document.getElementById("log");
-    let btn = document.getElementById("downloadBtn");
-
-    log.innerHTML = "";
-    btn.style.display = "none";
-
-    const evtSource = new EventSource(`/progress?input_value=${encodeURIComponent(input)}`);
-
-    evtSource.onmessage = function(event) {
-        log.innerHTML += event.data + "\n";
-        log.scrollTop = log.scrollHeight;
-
-        if (event.data.includes("Done")) {
-            btn.style.display = "inline-block";
-            evtSource.close();
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-    };
-}
 
-function downloadPDF() {
-    window.location.href = "/download";
-}
-</script>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: #333;
+        }
 
+        header {
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        header p {
+            font-size: 0.95em;
+            opacity: 0.9;
+            margin-top: 8px;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 50px;
+            max-width: 600px;
+            width: 100%;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .input-group {
+            margin-bottom: 30px;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        #input_value {
+            width: 100%;
+            padding: 15px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #input_value:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        #input_value::placeholder {
+            color: #999;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        #generateBtn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        #generateBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+        }
+
+        #generateBtn:active {
+            transform: translateY(0);
+        }
+
+        #generateBtn.loading {
+            opacity: 0.8;
+            cursor: not-allowed;
+        }
+
+        #downloadBtn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            display: none;
+            box-shadow: 0 10px 25px rgba(245, 87, 108, 0.3);
+        }
+
+        #downloadBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(245, 87, 108, 0.4);
+        }
+
+        #downloadBtn:active {
+            transform: translateY(0);
+        }
+
+        .log-container {
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 1px solid #e0e0e0;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        #log {
+            padding: 20px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.6;
+            color: #333;
+            background: #f8f9fa;
+            border: none;
+            margin: 0;
+        }
+
+        #log::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #log::-webkit-scrollbar-track {
+            background: #e0e0e0;
+            border-radius: 10px;
+        }
+
+        #log::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        #log::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            animation: pulse 2s infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        footer {
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9em;
+            backdrop-filter: blur(10px);
+        }
+
+        @media (max-width: 600px) {
+            .card {
+                padding: 30px 20px;
+            }
+
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            #downloadBtn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>
+            Documentation Generator
+        </h1>
+        <p>Transform your code into beautiful, comprehensive documentation</p>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <div class="input-group">
+                <label for="input_value">Enter Source</label>
+                <input type="text" id="input_value"
+                       placeholder="Enter folder path OR GitHub repo URL"
+                       spellcheck="false">
+            </div>
+
+            <div class="button-group">
+                <button id="generateBtn" onclick="startProcess()">
+                    Generate Documentation
+                </button>
+                <button id="downloadBtn" onclick="downloadPDF()">
+                    Download PDF
+                </button>
+            </div>
+
+            <div class="log-container">
+                <pre id="log"></pre>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Developed by Meeravali Shaik</p>
+    </footer>
+
+    <script>
+        function startProcess() {
+            let input = document.getElementById("input_value").value;
+            let log = document.getElementById("log");
+            let generateBtn = document.getElementById("generateBtn");
+            let downloadBtn = document.getElementById("downloadBtn");
+
+            if (!input.trim()) {
+                log.innerHTML = "Please enter a folder path or GitHub URL";
+                return;
+            }
+
+            log.innerHTML = 'Starting documentation generation...\n';
+            generateBtn.classList.add("loading");
+            generateBtn.disabled = true;
+            downloadBtn.style.display = "none";
+
+            const evtSource = new EventSource(`/progress?input_value=${encodeURIComponent(input)}`);
+
+            evtSource.onmessage = function(event) {
+                log.innerHTML += event.data + "\n";
+                log.scrollTop = log.scrollHeight;
+
+                if (event.data.includes("Done")) {
+                    downloadBtn.style.display = "block";
+                    generateBtn.classList.remove("loading");
+                    generateBtn.disabled = false;
+                    evtSource.close();
+                }
+            };
+
+            evtSource.onerror = function() {
+                log.innerHTML += "\nConnection error. Please try again.\n";
+                generateBtn.classList.remove("loading");
+                generateBtn.disabled = false;
+                evtSource.close();
+            };
+        }
+
+        function downloadPDF() {
+            window.location.href = "/download";
+        }
+
+        // Allow Enter key to start process
+        document.getElementById("input_value").addEventListener("keypress", function(e) {
+            if (e.key === "Enter") {
+                startProcess();
+            }
+        });
+    </script>
 </body>
 </html>
