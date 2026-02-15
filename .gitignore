@@ -1,4 +1,12 @@
 /.venv
 /venv
 /__pycache__
-output/Project_Documentation.pdf
+**/__pycache__/
+output/
+temp_repo/
+.env
+.env.local
+*.pyc
+.DS_Store
+.env.example
+DEPLOYMENT_READINESS.md

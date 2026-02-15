@@ -6,14 +6,14 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 def clean_text(text):
     """Remove emoji and special symbols from text"""
-    # Remove emoji characters
+   
     emoji_pattern = re.compile(
         "["
-        "\U0001F600-\U0001F64F"  # emoticons
-        "\U0001F300-\U0001F5FF"  # symbols & pictographs
-        "\U0001F680-\U0001F6FF"  # transport & map symbols
-        "\U0001F1E0-\U0001F1FF"  # flags (iOS)
-        "\U00002500-\U00002BEF"  # chinese char
+        "\U0001F600-\U0001F64F"  
+        "\U0001F300-\U0001F5FF"  
+        "\U0001F680-\U0001F6FF"  
+        "\U0001F1E0-\U0001F1FF"  
+        "\U00002500-\U00002BEF"  
         "\U00002702-\U000027B0"
         "\U00002702-\U000027B0"
         "\U000024C2-\U0001F251"
@@ -25,27 +25,56 @@ def clean_text(text):
         "\u23cf"
         "\u23e9"
         "\u231a"
-        "\ufe0f"  # dingbats
+        "\ufe0f"  
         "\u3030"
         "]+",
         flags=re.UNICODE
     )
     text = emoji_pattern.sub(r'', text)
+    
+    
+    text = re.sub(r'```[\w]*\n', '', text)
+    text = re.sub(r'```\n?', '', text)
+    
+    
+    text = re.sub(r'\*{3,}', '', text)  
+    text = re.sub(r'#{4,}', '', text)   
+    
+    
+    text = text.replace('&nbsp;', ' ')
+    text = text.replace('&lt;', '<')
+    text = text.replace('&gt;', '>')
+    
     return text
 
 def generate_doc(code_chunk):
-    prompt = f"""You are a professional technical documentation writer. Generate comprehensive, concise, and professional documentation for the following code.
+    prompt = f"""You are a professional technical documentation writer. Generate COMPREHENSIVE and DETAILED documentation for the following code. This documentation will be printed in a PDF report, so it should be substantial (minimum 5 pages worth of content).
 
 REQUIREMENTS:
 - Write in a formal, technical tone
-- Be concise and clear
-- Use proper markdown formatting
-- Avoid casual language or filler text
-- Structure the documentation logically
-- Include code examples where relevant
+- Be thorough and detailed - include comprehensive explanations
+- Use proper markdown formatting ONLY for: headings (# ## ###), bold (**text**), code blocks (```), bullet points (* or -)
+- Avoid all other markdown symbols and formatting
+- DO NOT use: horizontal rules (---), tables with |, blockquotes (>), or other special markdown
+- Structure the documentation with these sections:
+  * # Project Overview - Detailed description of what the project does
+  * ## Introduction - Purpose and context
+  * ## Architecture - How the system is organized and structured
+  * ## Key Components - Detailed explanation of each module/file
+  * ## Features - Comprehensive list of features with explanations
+  * ## Technical Details - In-depth technical information
+  * ## Implementation Details - How key functionality works
+  * ## Usage Examples - Multiple practical examples
+  * ## Configuration - Setup and configuration details
+  * ## Best Practices - Recommended practices for using this code
+  * ## Troubleshooting - Common issues and solutions
+  * ## Conclusion - Summary and next steps
+- Include multiple code examples and explanations
+- Provide at least 2-3 paragraphs for each major section
 - Do not use phrases like "This code", "In this code", "Let me explain"
-- Focus on: Overview, Key Features, Architecture, Usage, Configuration
-- Output should be suitable for professional documentation
+- Output should be detailed, professional, and suitable for complete technical documentation
+- Make sure content is substantial enough for a multi-page document
+- Aim for at least 5 pages worth of detailed information
 
 Code to document:
 {code_chunk}
@@ -59,7 +88,7 @@ Generate ONLY the documentation content without any preamble or introduction."""
 
     cleaned_text = clean_text(response.text)
     
-    # Remove common AI-generated phrases
+    
     cleaned_text = cleaned_text.replace("In summary,", "")
     cleaned_text = cleaned_text.replace("In conclusion,", "")
     cleaned_text = cleaned_text.replace("In this code,", "")
@@ -68,7 +97,11 @@ Generate ONLY the documentation content without any preamble or introduction."""
     cleaned_text = cleaned_text.replace("Here's how it works:", "")
     cleaned_text = cleaned_text.replace("As you can see,", "")
     
-    # Clean up extra whitespace
+    
+    cleaned_text = re.sub(r'(?<!\*)\*(?!\*| )', '', cleaned_text)  
+    cleaned_text = re.sub(r'(?<!#)#(?!# )', '', cleaned_text)  
+    
+    
     cleaned_text = "\n".join(line.rstrip() for line in cleaned_text.split("\n"))
     cleaned_text = "\n".join(line for line in cleaned_text.split("\n") if line.strip())
 
