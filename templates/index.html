@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Documentation Generator Agent</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <style>
         * {
             margin: 0;
@@ -301,22 +302,54 @@
             generateBtn.disabled = true;
             downloadBtn.style.display = "none";
 
+            let messageCount = 0;
+            let timeout = setTimeout(() => {
+                if (messageCount === 0) {
+                    log.innerHTML += "Connection timeout. Please check:\n";
+                    log.innerHTML += "1. Is GEMINI_API_KEY set in Vercel environment?\n";
+                    log.innerHTML += "2. Is the API key valid?\n";
+                    generateBtn.classList.remove("loading");
+                    generateBtn.disabled = false;
+                    evtSource.close();
+                }
+            }, 30000); // 30 second timeout
+
             const evtSource = new EventSource(`/progress?input_value=${encodeURIComponent(input)}`);
 
-            evtSource.onmessage = function(event) {
-                log.innerHTML += event.data + "\n";
-                log.scrollTop = log.scrollHeight;
+            evtSource.onopen = function() {
+                console.log("SSE connection opened");
+            };
 
-                if (event.data.includes("Done")) {
-                    downloadBtn.style.display = "block";
+            evtSource.onmessage = function(event) {
+                messageCount++;
+                clearTimeout(timeout);
+                
+                const data = event.data.trim();
+                if (data) {
+                    log.innerHTML += data + "\n";
+                    log.scrollTop = log.scrollHeight;
+                }
+
+                if (data.includes("Done") || data.includes("ERROR")) {
+                    downloadBtn.style.display = (data.includes("Done")) ? "block" : "none";
                     generateBtn.classList.remove("loading");
                     generateBtn.disabled = false;
                     evtSource.close();
                 }
             };
 
-            evtSource.onerror = function() {
-                log.innerHTML += "\nConnection error. Please try again.\n";
+            evtSource.onerror = function(error) {
+                clearTimeout(timeout);
+                console.error("SSE Error:", error);
+                
+                if (messageCount === 0) {
+                    log.innerHTML += "\nConnection error. Please verify:\n";
+                    log.innerHTML += "- GEMINI_API_KEY is set in Vercel\n";
+                    log.innerHTML += "- The API key is valid\n";
+                } else {
+                    log.innerHTML += "\nConnection closed.\n";
+                }
+                
                 generateBtn.classList.remove("loading");
                 generateBtn.disabled = false;
                 evtSource.close();
@@ -327,7 +360,7 @@
             window.location.href = "/download";
         }
 
-       
+        
         document.getElementById("input_value").addEventListener("keypress", function(e) {
             if (e.key === "Enter") {
                 startProcess();

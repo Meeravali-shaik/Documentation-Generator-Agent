@@ -1,8 +1,9 @@
 import os
 import time
 import re
+import traceback
 from html import escape
-from flask import Flask, render_template, request, Response, send_file
+from flask import Flask, render_template, request, Response, send_file, send_from_directory
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
@@ -11,10 +12,11 @@ from repo_parser import read_repo
 from llm_agent import generate_doc
 from github_loader import clone_repo
 
+# Check for required environment variables
+if not os.getenv("GEMINI_API_KEY"):
+    print("WARNING: GEMINI_API_KEY environment variable not set!")
 
-pt = 1
-
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', static_url_path='/static')
 
 LAST_PDF_PATH = None
 
@@ -138,39 +140,71 @@ def generate_pdf(text, output_path):
 def process_project(input_value):
     global LAST_PDF_PATH
 
-    yield "Starting documentation process...\n"
+    try:
+        # Check for required environment variable
+        if not os.getenv("GEMINI_API_KEY"):
+            yield "ERROR: GEMINI_API_KEY not configured. Please set in Vercel environment variables."
+            return
 
-    
-    if input_value.startswith("http"):
-        yield "Cloning / Updating GitHub repository...\n"
-        folder_path = clone_repo(input_value)
-    else:
-        folder_path = input_value
+        if not input_value or not input_value.strip():
+            yield "ERROR: No input provided. Please enter a folder path or GitHub URL."
+            return
 
-    yield "Reading project files...\n"
-    files = read_repo(folder_path)
+        yield "Starting documentation process..."
 
-    combined_code = ""
+        
+        if input_value.startswith("http"):
+            yield "Cloning / Updating GitHub repository..."
+            try:
+                folder_path = clone_repo(input_value)
+            except Exception as e:
+                yield f"ERROR: Failed to clone repository: {str(e)}"
+                return
+        else:
+            folder_path = input_value
 
-    for path, code in files.items():
-        name = os.path.basename(path)
-        yield f"Adding file to context: {name}\n"
-        combined_code += f"\n\n### FILE: {name}\n{code[:6000]}\n"
+        yield "Reading project files..."
+        try:
+            files = read_repo(folder_path)
+        except Exception as e:
+            yield f"ERROR: Failed to read project files: {str(e)}"
+            return
 
-    yield "Sending whole project to Gemini (single request)...\n"
+        if not files:
+            yield "ERROR: No Python files found in the project."
+            return
 
-    doc_text, _ = generate_doc(combined_code)
+        combined_code = ""
 
-    yield "Generating PDF...\n"
+        for path, code in files.items():
+            name = os.path.basename(path)
+            yield f"Adding file to context: {name}"
+            combined_code += f"\n\n### FILE: {name}\n{code[:6000]}\n"
 
-    os.makedirs("output", exist_ok=True)
-    pdf_path = os.path.join("output", "Project_Documentation.pdf")
-    generate_pdf(doc_text, pdf_path)
+        yield "Sending whole project to Gemini (single request)..."
 
-    LAST_PDF_PATH = pdf_path
+        try:
+            doc_text, _ = generate_doc(combined_code)
+        except Exception as e:
+            yield f"ERROR: Failed to generate documentation: {str(e)}"
+            return
 
-    yield "Done! Click Download PDF button.\n"
+        yield "Generating PDF..."
 
+        try:
+            os.makedirs("output", exist_ok=True)
+            pdf_path = os.path.join("output", "Project_Documentation.pdf")
+            generate_pdf(doc_text, pdf_path)
+            LAST_PDF_PATH = pdf_path
+        except Exception as e:
+            yield f"ERROR: Failed to generate PDF: {str(e)}"
+            return
+
+        yield "Done! Click Download PDF button."
+
+    except Exception as e:
+        yield f"ERROR: Unexpected error: {str(e)}"
+        traceback.print_exc()
 
 
 
@@ -179,16 +213,51 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/static/<path:filename>")
+def serve_static(filename):
+    return send_from_directory('static', filename)
+
+
+@app.route("/debug")
+def debug():
+    """Debug endpoint to check environment and connectivity"""
+    debug_info = {
+        "status": "OK",
+        "gemini_api_key_set": bool(os.getenv("GEMINI_API_KEY")),
+        "flask_debug": os.getenv("FLASK_DEBUG", "False"),
+        "environment": os.getenv("FLASK_ENV", "production")
+    }
+    return debug_info
+
+
 @app.route("/progress")
 def progress():
     input_value = request.args.get("input_value")
 
     def generate():
-        for msg in process_project(input_value):
-            yield f"data: {msg}\n\n"
-            time.sleep(0.4)
+        try:
+            # Send initial message
+            yield f"data: Initializing...\n\n"
+            
+            for msg in process_project(input_value):
+                # Ensure proper SSE format
+                msg_clean = str(msg).replace('\n', ' ').strip()
+                if msg_clean:
+                    yield f"data: {msg_clean}\n\n"
+                time.sleep(0.2)
+                
+        except Exception as e:
+            error_msg = f"ERROR: {str(e)}"
+            yield f"data: {error_msg}\n\n"
+            print(f"Progress endpoint error: {e}")
+            traceback.print_exc()
 
-    return Response(generate(), mimetype="text/event-stream")
+    # Add headers to support streaming on serverless platforms
+    response = Response(generate(), mimetype="text/event-stream")
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['Connection'] = 'keep-alive'
+    response.headers['X-Accel-Buffering'] = 'no'
+    return response
 
 
 @app.route("/download")

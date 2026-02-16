@@ -10,4 +10,5 @@ temp_repo/
 .DS_Store
 .env.example
 DEPLOYMENT_READINESS.md
+
 vercel.json
