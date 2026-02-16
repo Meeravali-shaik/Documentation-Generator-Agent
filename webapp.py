@@ -200,7 +200,6 @@ def download():
 
 
 if __name__ == "__main__":
-    app.run(debug=False, host="0.0.0.0", port=5000)
-
-# Export app for Vercel - required for serverless deployment
-export_app = app
+    port = int(os.getenv("PORT", 5000))
+    debug = os.getenv("FLASK_DEBUG", "False") == "True"
+    app.run(debug=debug, host="0.0.0.0", port=port)
