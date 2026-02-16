@@ -2,6 +2,7 @@ import os
 import time
 import re
 import traceback
+import tempfile
 from html import escape
 from flask import Flask, render_template, request, Response, send_file, send_from_directory
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
@@ -192,8 +193,10 @@ def process_project(input_value):
         yield "Generating PDF..."
 
         try:
-            os.makedirs("output", exist_ok=True)
-            pdf_path = os.path.join("output", "Project_Documentation.pdf")
+            # Use system temp directory (writable on Vercel and other serverless platforms)
+            temp_dir = tempfile.gettempdir()
+            os.makedirs(os.path.join(temp_dir, "doc_gen"), exist_ok=True)
+            pdf_path = os.path.join(temp_dir, "doc_gen", "Project_Documentation.pdf")
             generate_pdf(doc_text, pdf_path)
             LAST_PDF_PATH = pdf_path
         except Exception as e:

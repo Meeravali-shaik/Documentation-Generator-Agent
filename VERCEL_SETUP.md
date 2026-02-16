@@ -54,6 +54,18 @@ This will show you:
 - Current Flask environment
 - Other configuration info
 
+## Known Issues & Fixes
+
+### Read-Only File System Error
+
+On Vercel, the file system is read-only except for `/tmp`. This has been fixed in the application:
+
+- **GitHub cloning**: Now uses `/tmp` directory automatically
+- **PDF generation**: Now saves to `/tmp` directory automatically
+- **No manual fix needed**: The code handles this automatically
+
+If you still see "Read-only file system" errors, make sure you have the latest version of the code deployed.
+
 ## Troubleshooting
 
 ### Issue: "Connection error. Please try again."
@@ -75,6 +87,13 @@ This will show you:
 - Click on the latest deployment
 - Click **View Function Logs** or **Runtime Logs**
 - Look for error messages
+
+### Issue: "Read-only file system" Error
+
+This is fixed automatically. Make sure:
+1. You're running the latest version
+2. Redeploy if you just pulled new changes
+3. Check Vercel logs for the specific error
 
 ### Issue: Still Getting Errors After 30 Seconds
 
@@ -115,6 +134,7 @@ python webapp.py
 ├── webapp.py              # Main Flask application
 ├── requirements.txt       # Python dependencies
 ├── vercel.json            # Vercel configuration
+├── github_loader.py       # GitHub cloning (uses /tmp automatically)
 ├── templates/
 │   └── index.html         # Web interface
 ├── static/
@@ -122,14 +142,27 @@ python webapp.py
 └── [other files...]
 ```
 
+## How Vercel Compatibility Works
+
+### Temporary File Handling
+- Cloned repositories are stored in `/tmp` (automatically)
+- Generated PDFs are stored in `/tmp` (automatically)
+- Both are cleaned up automatically after a short period
+
+### Important Limitations
+- Maximum execution time: 60 seconds per request
+- File system is read-only except `/tmp`
+- Cold starts may take 1-2 seconds (normal)
+
 ## Common Issues
 
 | Problem | Cause | Solution |
 |---------|-------|----------|
 | 404 Not Found | Flask entrypoint missing | Ensure `app.py` exists and imports from `webapp.py` |
 | Connection error | GEMINI_API_KEY not set | Add to Vercel environment variables and redeploy |
-| Generation hangs | API rate limit | Wait and try with fewer files |
-| Favicon 404s | Static files not served | Should be fixed, favicon is in `/static/favicon.svg` |
+| Generation hangs | API rate limit or timeout | Wait and try with fewer files, check logs |
+| Favicon 404s | Favicon not found | Should be fixed, in `/static/favicon.svg` |
+| Read-only file system | Old code version | Update code and redeploy |
 
 ## Support
 
@@ -138,4 +171,6 @@ If you're still having issues:
 2. Visit `/debug` endpoint to see configuration
 3. Review this guide's troubleshooting section
 4. Make sure all steps in "Quick Setup" are completed in order
+5. Try the local testing steps to isolate the issue
+
 
