@@ -56,15 +56,24 @@ This will show you:
 
 ## Known Issues & Fixes
 
+### Git Not Available Error
+
+Vercel's Python runtime doesn't include the git CLI. This has been fixed in the application:
+
+- **GitHub cloning**: Now uses the GitHub API to download repositories as ZIP files
+- **No git CLI needed**: All cloning is done via HTTP requests
+- **Supports**: Main and master branches automatically
+- **No manual fix needed**: The code handles this automatically
+
 ### Read-Only File System Error
 
 On Vercel, the file system is read-only except for `/tmp`. This has been fixed in the application:
 
-- **GitHub cloning**: Now uses `/tmp` directory automatically
+- **GitHub downloads**: Now uses `/tmp` directory automatically
 - **PDF generation**: Now saves to `/tmp` directory automatically
 - **No manual fix needed**: The code handles this automatically
 
-If you still see "Read-only file system" errors, make sure you have the latest version of the code deployed.
+If you still see file system errors, make sure you have the latest version of the code deployed.
 
 ## Troubleshooting
 
@@ -144,15 +153,22 @@ python webapp.py
 
 ## How Vercel Compatibility Works
 
+### Repository Cloning
+- Uses GitHub API to download repositories as ZIP files
+- No git CLI required (git isn't available on Vercel)
+- Automatically tries both `main` and `master` branches
+- Much faster and more reliable on serverless platforms
+
 ### Temporary File Handling
-- Cloned repositories are stored in `/tmp` (automatically)
-- Generated PDFs are stored in `/tmp` (automatically)
+- Downloaded repositories are stored in `/tmp` directory (automatically)
+- Generated PDFs are stored in `/tmp` directory (automatically)
 - Both are cleaned up automatically after a short period
 
 ### Important Limitations
 - Maximum execution time: 60 seconds per request
 - File system is read-only except `/tmp`
 - Cold starts may take 1-2 seconds (normal)
+- Large repositories may timeout (60-second limit)
 
 ## Common Issues
 
@@ -163,6 +179,9 @@ python webapp.py
 | Generation hangs | API rate limit or timeout | Wait and try with fewer files, check logs |
 | Favicon 404s | Favicon not found | Should be fixed, in `/static/favicon.svg` |
 | Read-only file system | Old code version | Update code and redeploy |
+| "No such file or directory: 'git'" | Old code version using git CLI | Update code, uses GitHub API now, redeploy |
+| Repository not found (404) | Invalid GitHub URL or private repo | Verify URL is correct and repo is public |
+| Timeout after 60 seconds | Repository too large | Try with a smaller repository first |
 
 ## Support
 
